@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Student Grade Management System</title>
+  <style>
+    /* Reset and Global Styles */ 
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background: linear-gradient(135deg, #74ABE2, #5563DE);
+      font-family: 'Arial', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    
+    /* Container: Centered and Styled */
+    .container {
+      background: #fff;
+      width: 90%;
+      max-width: 800px;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      text-align: center;
+    }
+    
+    /* Header Styling */
+    h1 {
+      margin-bottom: 40px; /* Increased space below the header */
+      color: #333;
+    }
+    
+    /* Form Styling */
+    form {
+      margin-bottom: 30px; /* Increased space below the form */
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+    }
+    form input {
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      flex: 1 1 200px;
+    }
+    form button {
+      padding: 10px 20px;
+      background: #5563DE;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      flex: 1 1 100%;
+      transition: background 0.3s ease;
+    }
+    form button:hover {
+      background: #4455CC;
+    }
+    
+    /* Table Styling */
+    table {
+      width: 100%;
+      border-collapse: separate;  /* Allows spacing between cells */
+      border-spacing: 10px;         /* Adds 10px gap between table cells */
+      margin-top: 30px;             /* Increased space above the table */
+    }
+    table th,
+    table td {
+      border: 1px solid #ddd;
+      padding: 15px;                /* Increased padding inside cells */
+    }
+    table th {
+      background: #f0f0f0;
+      color: #333;
+    }
+    
+    /* Increase gap between Student ID and Name columns */
+    .student-id-col {
+      padding-right: 30px; /* Extra space on the right side of the Student ID column */
+    }
+    
+    /* Action Buttons Styling */
+    .action-btn {
+      padding: 5px 10px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 2px;
+    }
+    .edit-btn {
+      background: #ffce54;
+      color: #333;
+    }
+    .delete-btn {
+      background: #ff6b6b;
+      color: #fff;
+    }
+    
+    /* PDF Download Button Styling */
+    .pdf-btn {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: #5563DE;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    .pdf-btn:hover {
+      background: #4455CC;
+    }
+  </style>
+  
+  <!-- Include html2canvas and jsPDF libraries from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>Student Grade Management System</h1>
+    <!-- Form for adding/updating student records -->
+    <form id="studentForm">
+      <input type="hidden" id="index" value="-1" />
+      <input type="text" id="studentId" placeholder="Student ID" required />
+      <input type="text" id="studentName" placeholder="Student Name" required />
+      <input type="text" id="grades" placeholder="Grades (comma separated)" required />
+      <button type="submit" id="submitBtn">Add Student</button>
+    </form>
+    <!-- Table to display student records -->
+    <table id="studentsTable">
+      <thead>
+        <tr>
+          <th class="student-id-col">Student ID</th>
+          <th>Name</th>
+          <th>Grades</th>
+          <th>Average</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- JavaScript will dynamically insert student rows here -->
+      </tbody>
+    </table>
+    <!-- PDF Download Button -->
+    <button id="downloadPdf" class="pdf-btn">Download PDF</button>
+  </div>
+  
+  <script>
+    // Array to store student records (starts empty)
+    let students = [];
+    
+    // Get references to DOM elements
+    const studentForm = document.getElementById('studentForm');
+    const indexInput = document.getElementById('index');
+    const studentIdInput = document.getElementById('studentId');
+    const studentNameInput = document.getElementById('studentName');
+    const gradesInput = document.getElementById('grades');
+    const submitBtn = document.getElementById('submitBtn');
+    const studentsTableBody = document.querySelector('#studentsTable tbody');
+    const downloadPdfBtn = document.getElementById('downloadPdf');
+    
+    // Function to render the student table
+    function renderTable() {
+      studentsTableBody.innerHTML = '';
+      students.forEach((student, i) => {
+        const avg = calculateAverage(student.grades);
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td class="student-id-col">${student.id}</td>
+          <td>${student.name}</td>
+          <td>${student.grades.join(', ')}</td>
+          <td>${avg.toFixed(2)}</td>
+          <td>
+            <button class="action-btn edit-btn" onclick="editStudent(${i})">Edit</button>
+            <button class="action-btn delete-btn" onclick="deleteStudent(${i})">Delete</button>
+          </td>
+        `;
+        studentsTableBody.appendChild(row);
+      });
+    }
+    
+    // Function to calculate the average grade
+    function calculateAverage(grades) {
+      if (grades.length === 0) return 0;
+      const total = grades.reduce((acc, grade) => acc + grade, 0);
+      return total / grades.length;
+    }
+    
+    // Event listener for form submission (add/update student)
+    studentForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      const id = studentIdInput.value.trim();
+      const name = studentNameInput.value.trim();
+      const gradesStr = gradesInput.value.trim();
+      // Convert comma separated grades to an array of numbers
+      const gradesArr = gradesStr.split(',').map(g => parseFloat(g.trim())).filter(g => !isNaN(g));
+    
+      if (!id || !name || gradesArr.length === 0) {
+        alert('Please fill in all fields with valid data.');
+        return;
+      }
+    
+      // Check if we're editing an existing student or adding a new one
+      const idx = parseInt(indexInput.value);
+      if (idx === -1) {
+        // Add new student record
+        students.push({ id, name, grades: gradesArr });
+      } else {
+        // Update existing student record
+        students[idx] = { id, name, grades: gradesArr };
+        indexInput.value = -1;
+        submitBtn.textContent = 'Add Student';
+      }
+    
+      studentForm.reset();
+      renderTable();
+    });
+    
+    // Function to edit a student record
+    function editStudent(index) {
+      const student = students[index];
+      indexInput.value = index;
+      studentIdInput.value = student.id;
+      studentNameInput.value = student.name;
+      gradesInput.value = student.grades.join(', ');
+      submitBtn.textContent = 'Update Student';
+    }
+    
+    // Function to delete a student record
+    function deleteStudent(index) {
+      if (confirm('Are you sure you want to delete this student?')) {
+        students.splice(index, 1);
+        renderTable();
+      }
+    }
+    
+    // PDF Download Functionality
+    downloadPdfBtn.addEventListener('click', function() {
+      html2canvas(document.querySelector('.container')).then(canvas => {
+        const imgData = canvas.toDataURL('image/png');
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const imgProps = pdf.getImageProperties(imgData);
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        pdf.save("Student_Grade_Management.pdf");
+      });
+    });
+    
+    // Initial render (table is empty until you add data)
+    renderTable();
+  </script>
+</body>
+</html>
